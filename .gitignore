@@ -1,0 +1,7 @@
+.vscode
+build
+dist
+migaku-wr-dict.egg-info
+*.apkg
+**/__pycache__
+!examples/*.apkg
