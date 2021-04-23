@@ -79,10 +79,9 @@ async def get_entries_for_term(term, lfrom, lto, semaphore):
                         fr_pos = fr_pos.find(text=True, recursive=False)
                         altterm = fr_wrd.find('strong')
                         altterm = altterm.find(text=True, recursive=False)
-                        altterms.append(altterm.strip())
-                        definitions.append(to_def.strip())
-                        if fr_pos:
-                            pos.append(fr_pos.strip())
+                        altterms.append(altterm.strip() if altterm else altterm)
+                        definitions.append(to_def.strip() if to_def else to_def)
+                        pos.append(fr_pos.strip() if fr_pos else fr_pos)
                         last_entry = entry_id
                     else:
                         fr_ex = entry.find('td', class_='FrEx')
@@ -103,15 +102,25 @@ async def get_entries_for_term(term, lfrom, lto, semaphore):
         pronunciations = [p if altterms[i] == term else None for i, p in enumerate(pronunciations)]
         if altterms:
             examples.append(entry_ex)
-        return pd.DataFrame({
-            'term': term,
-            'altterms': altterms,
-            'pronunciations': pronunciations,
-            'definitions': definitions,
-            'pos': pos,
-            'examples': examples,
-            'audios': None,
-        })
+        try:
+            df = pd.DataFrame({
+                'term': term,
+                'altterms': altterms,
+                'pronunciations': pronunciations,
+                'definitions': definitions,
+                'pos': pos,
+                'examples': examples,
+                'audios': None,
+            })
+        except:
+            print(
+                len(altterms),
+                len(pronunciations),
+                len(definitions),
+                len(pos),
+                len(examples)
+            )
+
 
 
 async def main(loop):
