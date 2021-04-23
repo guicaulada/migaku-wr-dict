@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import json
+import random
 import re
 from functools import partial
 from multiprocessing import Pool
@@ -24,18 +25,20 @@ def parse_args():
     parser.add_argument('--words', '-w', type=str, dest='words', required=True,
                         help='Path to word list to translate from')
     parser.add_argument('--freq', '-f', type=str, dest='freq',
-                        help='Path to frequency list (optional)')
+                        help='Path to frequency list')
     parser.add_argument('--threads', '-t', type=int, dest='threads', default=10,
-                        help='Path to frequency list (optional)')
+                        help='Number of threads to execute concurrently')
     parser.add_argument('--nwords', '-n', type=int, dest='nwords',
                         help='Number of words to translate')
+    parser.add_argument('--proxies', '-p', type=str, dest='proxies',
+                        help='Path to rotating proxy list')
     parser.add_argument('--debug', action='store_true', dest='debug',
                         help='Print debug output')
     args = parser.parse_args()
     return args
 
 
-async def get_entries_for_term(term, lfrom, lto, semaphore):
+async def get_entries_for_term(term, lfrom, lto, semaphore, proxies):
     async with semaphore:
         path = lfrom + lto
         url = f'{URL}/{path}/{term}'
@@ -46,7 +49,10 @@ async def get_entries_for_term(term, lfrom, lto, semaphore):
         examples = []
         audios = []
         content = None
-        async with aiohttp.request('GET', url) as response:
+        kwargs = {}
+        if proxies:
+            kwargs.update({'proxy': random.choice(proxies)})
+        async with aiohttp.request('GET', url, **kwargs) as response:
             content = await response.text()
         soup = BeautifulSoup(content, 'html.parser')
         top = soup.find('div', class_='pwrapper')
@@ -95,7 +101,9 @@ async def get_entries_for_term(term, lfrom, lto, semaphore):
                             to_ex = to_ex.find(text=True)
                             entry_ex.append(to_ex)
             i = i + 100
-            async with aiohttp.request('GET', url + f'?start={i}') as response:
+            if proxies:
+                kwargs.update({'proxy': random.choice(proxies)})
+            async with aiohttp.request('GET', url + f'?start={i}', **kwargs) as response:
                 content = await response.text()
             soup = BeautifulSoup(content, 'html.parser')
             tables = soup.find_all('table', class_='WRD')
@@ -131,6 +139,7 @@ async def main(loop):
     entries = []
     words = []
     jobs = []
+    proxies = []
 
     loop.set_debug(args.debug)
     with open(args.words) as f:
@@ -138,11 +147,15 @@ async def main(loop):
     
     if args.nwords:
         words = words[:args.nwords]
+    
+    if args.proxies:
+        with open(args.proxies) as f:
+            proxies = [l.strip() for l in f.readlines()]
 
     semaphore = asyncio.Semaphore(args.threads)
     pbar = tqdm(total=len(words))
     for word in words:
-        jobs.append(asyncio.ensure_future(get_entries_for_term(word.strip(), args.lfrom, args.lto, semaphore)))
+        jobs.append(asyncio.ensure_future(get_entries_for_term(word.strip(), args.lfrom, args.lto, semaphore, proxies)))
     
     for job in asyncio.as_completed(jobs):
         value = await job
