@@ -26,8 +26,10 @@ def parse_args():
                         help='Path to word list to translate from')
     parser.add_argument('--freq', '-f', type=str, dest='freq',
                         help='Path to frequency list')
-    parser.add_argument('--threads', '-t', type=int, dest='threads', default=10,
+    parser.add_argument('--threads', '-t', type=int, dest='threads', default=100,
                         help='Number of threads to execute concurrently')
+    parser.add_argument('--offset', type=int, dest='offset', default=0,
+                        help='Offset to start from on words list')
     parser.add_argument('--nwords', '-n', type=int, dest='nwords',
                         help='Number of words to translate')
     parser.add_argument('--proxies', '-p', type=str, dest='proxies',
@@ -36,6 +38,12 @@ def parse_args():
                         help='Print debug output')
     args = parser.parse_args()
     return args
+
+
+def empty_entries():
+    return pd.DataFrame(columns=[
+        'term', 'altterms', 'pronunciations', 'definitions', 'pos', 'examples', 'audios',
+    ])
 
 
 async def get_entries_for_term(term, lfrom, lto, semaphore, proxies):
@@ -57,9 +65,7 @@ async def get_entries_for_term(term, lfrom, lto, semaphore, proxies):
         soup = BeautifulSoup(content, 'html.parser')
         top = soup.find('div', class_='pwrapper')
         if not top:
-            return pd.DataFrame(columns=[
-                'term', 'altterms', 'pronunciations', 'definitions', 'pos', 'examples', 'audios',
-            ])
+            return empty_entries()
         pron = top.find_all('span', class_=['pronWR', 'pronRH'])
         tables = soup.find_all('table', class_='WRD')
         pronunciations = [p.find(text=True, recursive=False) for p in pron]
@@ -131,6 +137,7 @@ async def get_entries_for_term(term, lfrom, lto, semaphore, proxies):
                 len(pos),
                 len(examples)
             )
+            return empty_entries()
 
 
 
@@ -145,6 +152,9 @@ async def main(loop):
     with open(args.words) as f:
         words = f.readlines()
     
+    if args.offset:
+        words = words[args.offset:]
+
     if args.nwords:
         words = words[:args.nwords]
     
