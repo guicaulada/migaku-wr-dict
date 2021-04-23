@@ -95,15 +95,16 @@ async def get_entries_for_term(term, lfrom, lto, semaphore):
                             to_ex = to_ex.find(text=True)
                             entry_ex.append(to_ex)
             i = i + 100
-            result = requests.get(url + f'?start={i}')
-            soup = BeautifulSoup(result.content, 'html.parser')
+            async with aiohttp.request('GET', url + f'?start={i}') as response:
+                content = await response.text()
+            soup = BeautifulSoup(content, 'html.parser')
             tables = soup.find_all('table', class_='WRD')
         pronunciations = [pronunciations] * len(altterms)
         pronunciations = [p if altterms[i] == term else None for i, p in enumerate(pronunciations)]
         if altterms:
             examples.append(entry_ex)
         try:
-            df = pd.DataFrame({
+            return pd.DataFrame({
                 'term': term,
                 'altterms': altterms,
                 'pronunciations': pronunciations,
@@ -114,6 +115,8 @@ async def get_entries_for_term(term, lfrom, lto, semaphore):
             })
         except:
             print(
+                'Failed:',
+                term,
                 len(altterms),
                 len(pronunciations),
                 len(definitions),
