@@ -26,7 +26,7 @@ def parse_args():
                         help='Path to word list to translate from')
     parser.add_argument('--freq', '-f', type=str, dest='freq',
                         help='Path to frequency list')
-    parser.add_argument('--threads', '-t', type=int, dest='threads', default=100,
+    parser.add_argument('--threads', '-t', type=int, dest='threads', default=10,
                         help='Number of threads to execute concurrently')
     parser.add_argument('--offset', type=int, dest='offset', default=0,
                         help='Offset to start from on words list')
