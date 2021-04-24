@@ -1,8 +1,10 @@
 import argparse
 import asyncio
 import json
+import os
 import random
 import re
+import time
 from functools import partial
 from multiprocessing import Pool
 
@@ -26,14 +28,14 @@ def parse_args():
                         help='Path to word list to translate from')
     parser.add_argument('--freq', '-f', type=str, dest='freq',
                         help='Path to frequency list')
-    parser.add_argument('--threads', '-t', type=int, dest='threads', default=10,
+    parser.add_argument('--threads', '-t', type=int, dest='threads', default=100,
                         help='Number of threads to execute concurrently')
     parser.add_argument('--offset', type=int, dest='offset', default=0,
                         help='Offset to start from on words list')
     parser.add_argument('--nwords', '-n', type=int, dest='nwords',
                         help='Number of words to translate')
-    parser.add_argument('--proxies', '-p', type=str, dest='proxies',
-                        help='Path to rotating proxy list')
+    parser.add_argument('--save', '-s', type=str, dest='save', default='migaku-wr-dict.save',
+                        help='Path to savefile where data will be stored')
     parser.add_argument('--debug', action='store_true', dest='debug',
                         help='Print debug output')
     args = parser.parse_args()
@@ -46,7 +48,7 @@ def empty_entries():
     ])
 
 
-async def get_entries_for_term(term, lfrom, lto, semaphore, proxies):
+async def get_entries_for_term(term, lfrom, lto, semaphore):
     async with semaphore:
         path = lfrom + lto
         url = f'{URL}/{path}/{term}'
@@ -58,9 +60,7 @@ async def get_entries_for_term(term, lfrom, lto, semaphore, proxies):
         audios = []
         content = None
         kwargs = {}
-        if proxies:
-            kwargs.update({'proxy': random.choice(proxies)})
-        async with aiohttp.request('GET', url, **kwargs) as response:
+        async with aiohttp.request('GET', url) as response:
             content = await response.text()
         soup = BeautifulSoup(content, 'html.parser')
         top = soup.find('div', class_='pwrapper')
@@ -107,9 +107,7 @@ async def get_entries_for_term(term, lfrom, lto, semaphore, proxies):
                             to_ex = to_ex.find(text=True)
                             entry_ex.append(to_ex)
             i = i + 100
-            if proxies:
-                kwargs.update({'proxy': random.choice(proxies)})
-            async with aiohttp.request('GET', url + f'?start={i}', **kwargs) as response:
+            async with aiohttp.request('GET', url + f'?start={i}') as response:
                 content = await response.text()
             soup = BeautifulSoup(content, 'html.parser')
             tables = soup.find_all('table', class_='WRD')
@@ -140,40 +138,55 @@ async def get_entries_for_term(term, lfrom, lto, semaphore, proxies):
             return empty_entries()
 
 
-
-async def main(loop):
-    args = parse_args()
-    entries = []
-    words = []
+async def collect_words(words, args):
     jobs = []
-    proxies = []
-
-    loop.set_debug(args.debug)
-    with open(args.words) as f:
-        words = f.readlines()
+    entries = []
+    error = False
+    semaphore = asyncio.Semaphore(args.threads)
+    pbar = tqdm(total=len(words))
     
     if args.offset:
         words = words[args.offset:]
 
     if args.nwords:
         words = words[:args.nwords]
-    
-    if args.proxies:
-        with open(args.proxies) as f:
-            proxies = [l.strip() for l in f.readlines()]
 
-    semaphore = asyncio.Semaphore(args.threads)
-    pbar = tqdm(total=len(words))
     for word in words:
-        jobs.append(asyncio.ensure_future(get_entries_for_term(word.strip(), args.lfrom, args.lto, semaphore, proxies)))
-    
-    for job in asyncio.as_completed(jobs):
-        value = await job
-        entries.append(value)
-        pbar.update()
+        jobs.append(asyncio.ensure_future(get_entries_for_term(word.strip(), args.lfrom, args.lto, semaphore)))
 
-    print(pd.concat(entries).reset_index())
+    try:
+        for job in asyncio.as_completed(jobs):
+            value = await job
+            entries.append(value)
+            pbar.update()
+    except:
+        error = True
     pbar.close()
+    return entries, error
+
+
+async def main(loop):
+    error = None
+    while error is None or error:
+        args = parse_args()
+        words = []
+        save = []
+
+        loop.set_debug(args.debug)
+        with open(args.words) as f:
+            words = f.readlines()
+        
+        if os.path.exists(args.save):
+            save_df = pd.read_parquet(args.save)
+            words = [w for w in words if w not in list(df.term.unique())]
+            save.append(save_df)
+
+        entries, error = await collect_words(words, args)
+        df = pd.concat(save + entries).reset_index()
+        df.to_parquet(args.save)
+        if error:
+            print('An error was found, retrying in 5 seconds...')
+            time.sleep(5)
 
 
 if __name__ == '__main__':
