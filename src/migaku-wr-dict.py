@@ -84,7 +84,8 @@ async def get_entries_for_term(term, lfrom, lto, semaphore, proxies=[]):
         top = soup.find('div', class_='pwrapper')
         if top:
             pron = top.find_all('span', class_=['pronWR', 'pronRH'])
-            pronunciations = [p.find(text=True) for p in pron]
+            tooltips = [span.find(text=True) for p in pron for span in p.find_all('span')]
+            pronunciations = [''.join([t for t in p.find_all(text=True) if t not in tooltips]) for p in pron]
         tables = soup.find_all('table', class_='WRD')
         last_entry = None
         entry_ex = []
@@ -198,7 +199,7 @@ async def collect_words(words, **kwargs):
 def save_data(df, file):
     global SAVE
     if isinstance(df, list):
-        if SAVE:
+        if SAVE is not None:
             df = [SAVE] + df
         df = pd.concat(df).reset_index(drop=True)
         SAVE = df
@@ -222,7 +223,7 @@ async def main(**kwargs):
         
         if os.path.exists(kwargs['save']):
             print('Reading saved data...')
-            if not SAVE:
+            if SAVE is None:
                 SAVE = pd.read_parquet(kwargs['save'])
             words = [w for w in words if w.strip() not in list(SAVE.term.unique())]
 

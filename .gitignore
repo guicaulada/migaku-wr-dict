@@ -6,3 +6,4 @@ migaku-wr-dict.egg-info
 **/__pycache__
 !examples/*.apkg
 proxies.txt
+*.save
