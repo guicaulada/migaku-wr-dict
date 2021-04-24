@@ -4,6 +4,7 @@ import json
 import os
 import random
 import re
+import sys
 import time
 from functools import partial
 from multiprocessing import Pool
@@ -15,6 +16,10 @@ from bs4 import BeautifulSoup
 from tqdm.asyncio import tqdm
 
 URL = 'https://www.wordreference.com'
+ENTRIES = []
+JOBS = []
+SAVE = None
+PBAR = None
 
 
 def parse_args():
@@ -30,25 +35,35 @@ def parse_args():
                         help='Path to frequency list')
     parser.add_argument('--threads', '-t', type=int, dest='threads', default=100,
                         help='Number of threads to execute concurrently')
-    parser.add_argument('--offset', type=int, dest='offset', default=0,
+    parser.add_argument('--offset', '-o', type=int, dest='offset', default=0,
                         help='Offset to start from on words list')
     parser.add_argument('--nwords', '-n', type=int, dest='nwords',
                         help='Number of words to translate')
+    parser.add_argument('--proxies', '-p', type=str, dest='proxies',
+                        help='Path to rotating proxy list')
     parser.add_argument('--save', '-s', type=str, dest='save', default='migaku-wr-dict.save',
                         help='Path to savefile where data will be stored')
+    parser.add_argument('--interval', '-i', type=str, dest='interval', default=5,
+                        help='Interval between retries')
     parser.add_argument('--debug', action='store_true', dest='debug',
                         help='Print debug output')
     args = parser.parse_args()
     return args
 
 
-def empty_entries():
-    return pd.DataFrame(columns=[
-        'term', 'altterms', 'pronunciations', 'definitions', 'pos', 'examples', 'audios',
-    ])
+def empty_entries(term):
+    return pd.DataFrame({
+        'term': [term],
+        'altterms': None,
+        'pronunciations': None,
+        'definitions': None,
+        'pos': None,
+        'examples': None,
+        'audios': None,
+    })
 
 
-async def get_entries_for_term(term, lfrom, lto, semaphore):
+async def get_entries_for_term(term, lfrom, lto, semaphore, proxies=[]):
     async with semaphore:
         path = lfrom + lto
         url = f'{URL}/{path}/{term}'
@@ -58,17 +73,19 @@ async def get_entries_for_term(term, lfrom, lto, semaphore):
         pos = []
         examples = []
         audios = []
+        pron = []
         content = None
         kwargs = {}
-        async with aiohttp.request('GET', url) as response:
+        if proxies:
+            kwargs.update({'proxy': random.choice(proxies)})
+        async with aiohttp.request('GET', url, **kwargs) as response:
             content = await response.text()
         soup = BeautifulSoup(content, 'html.parser')
         top = soup.find('div', class_='pwrapper')
-        if not top:
-            return empty_entries()
-        pron = top.find_all('span', class_=['pronWR', 'pronRH'])
+        if top:
+            pron = top.find_all('span', class_=['pronWR', 'pronRH'])
+            pronunciations = [p.find(text=True) for p in pron]
         tables = soup.find_all('table', class_='WRD')
-        pronunciations = [p.find(text=True, recursive=False) for p in pron]
         last_entry = None
         entry_ex = []
         fr_def = ''
@@ -107,7 +124,9 @@ async def get_entries_for_term(term, lfrom, lto, semaphore):
                             to_ex = to_ex.find(text=True)
                             entry_ex.append(to_ex)
             i = i + 100
-            async with aiohttp.request('GET', url + f'?start={i}') as response:
+            if proxies:
+                kwargs.update({'proxy': random.choice(proxies)})
+            async with aiohttp.request('GET', url + f'?start={i}', **kwargs) as response:
                 content = await response.text()
             soup = BeautifulSoup(content, 'html.parser')
             tables = soup.find_all('table', class_='WRD')
@@ -135,60 +154,106 @@ async def get_entries_for_term(term, lfrom, lto, semaphore):
                 len(pos),
                 len(examples)
             )
-            return empty_entries()
+            return empty_entries(term)
 
 
-async def collect_words(words, args):
-    jobs = []
-    entries = []
+async def collect_words(words, **kwargs):
+    global ENTRIES
+    global JOBS
+    global PBAR
+    proxies = []
     error = False
-    semaphore = asyncio.Semaphore(args.threads)
-    pbar = tqdm(total=len(words))
-    
-    if args.offset:
-        words = words[args.offset:]
+    JOBS = []
+    ENTRIES = []
+    PBAR = tqdm(total=len(words))
+    semaphore = asyncio.Semaphore(kwargs['threads'])
 
-    if args.nwords:
-        words = words[:args.nwords]
+    if kwargs['offset']:
+        words = words[kwargs['offset']:]
+
+    if kwargs['nwords']:
+        words = words[:kwargs['nwords']]
+
+    if kwargs['proxies']:
+        with open(kwargs['proxies']) as f:
+            proxies = [l.strip() for l in f.readlines()]
 
     for word in words:
-        jobs.append(asyncio.ensure_future(get_entries_for_term(word.strip(), args.lfrom, args.lto, semaphore)))
+        JOBS.append(asyncio.ensure_future(get_entries_for_term(word.strip(), kwargs['lfrom'], kwargs['lto'], semaphore, proxies)))
 
     try:
-        for job in asyncio.as_completed(jobs):
+        for job in asyncio.as_completed(JOBS):
             value = await job
-            entries.append(value)
-            pbar.update()
+            ENTRIES.append(value)
+            PBAR.update()
     except:
+        for job in JOBS:
+            job.cancel()
         error = True
-    pbar.close()
-    return entries, error
+
+    PBAR.close()
+    return ENTRIES, error
 
 
-async def main(loop):
+def save_data(df, file):
+    global SAVE
+    if isinstance(df, list):
+        if SAVE:
+            df = [SAVE] + df
+        df = pd.concat(df).reset_index(drop=True)
+        SAVE = df
+    df.to_parquet(file)
+
+
+async def main(**kwargs):
+    global SAVE
     error = None
+    collection_args = ['threads', 'offset', 'nwords', 'proxies', 'lfrom', 'lto']
+    collection_args = {key: kwargs[key] for key in kwargs if key in collection_args}
     while error is None or error:
-        args = parse_args()
         words = []
         save = []
+        if error:
+            print('Retrying now...')
 
-        loop.set_debug(args.debug)
-        with open(args.words) as f:
+        with open(kwargs['words']) as f:
+            print('Reading words list...')
             words = f.readlines()
         
-        if os.path.exists(args.save):
-            save_df = pd.read_parquet(args.save)
-            words = [w for w in words if w not in list(df.term.unique())]
-            save.append(save_df)
+        if os.path.exists(kwargs['save']):
+            print('Reading saved data...')
+            if not SAVE:
+                SAVE = pd.read_parquet(kwargs['save'])
+            words = [w for w in words if w.strip() not in list(SAVE.term.unique())]
 
-        entries, error = await collect_words(words, args)
-        df = pd.concat(save + entries).reset_index()
-        df.to_parquet(args.save)
+        print('Collecting data...')
+        entries, error = await collect_words(words, **collection_args)
         if error:
-            print('An error was found, retrying in 5 seconds...')
-            time.sleep(5)
+            print('An error was found, retrying in a few seconds...')
+        print('Saving collected data...')
+        save_data(entries, kwargs['save'])
+
+
+def exit_process():
+    print('\nInterrupting...')
+    if PBAR:
+        PBAR.close()
+    for job in JOBS:
+        job.cancel()
+    if ENTRIES:
+        print('Saving collected data before exit...')
+        save_data(ENTRIES, args.save)
+    try:
+        sys.exit(0)
+    except SystemExit:
+        os._exit(0)
 
 
 if __name__ == '__main__':
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(main(loop))
+    args = parse_args()
+    try:
+        loop = asyncio.get_event_loop()
+        loop.set_debug(args.debug)
+        loop.run_until_complete(main(**vars(args)))
+    except KeyboardInterrupt:
+        exit_process()
