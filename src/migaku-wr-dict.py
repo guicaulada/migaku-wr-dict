@@ -20,6 +20,7 @@ ENTRIES = []
 JOBS = []
 SAVE = None
 PBAR = None
+INTERRUPTED = False
 
 
 def parse_args():
@@ -108,7 +109,7 @@ async def get_entries_for_term(term, lfrom, lto, semaphore, proxies=[]):
                         fr_pos = fr_wrd.find('em')
                         fr_pos = fr_pos.find(text=True, recursive=False)
                         altterm = fr_wrd.find('strong')
-                        altterm = altterm.find(text=True, recursive=False)
+                        altterm = altterm.find(text=True)
                         altterms.append(altterm.strip() if altterm else altterm)
                         definitions.append(to_def.strip() if to_def else to_def)
                         pos.append(fr_pos.strip() if fr_pos else fr_pos)
@@ -132,19 +133,19 @@ async def get_entries_for_term(term, lfrom, lto, semaphore, proxies=[]):
             soup = BeautifulSoup(content, 'html.parser')
             tables = soup.find_all('table', class_='WRD')
         pronunciations = [pronunciations] * len(altterms)
-        pronunciations = [p if altterms[i] == term else None for i, p in enumerate(pronunciations)]
         if altterms:
             examples.append(entry_ex)
         try:
-            return pd.DataFrame({
+            df = pd.DataFrame({
                 'term': term,
-                'altterms': altterms,
+                'altterm': altterms,
                 'pronunciations': pronunciations,
-                'definitions': definitions,
+                'definition': definitions,
                 'pos': pos,
                 'examples': examples,
                 'audios': None,
             })
+            return df if not df.empty else empty_entries(term)
         except:
             print(
                 'Failed:',
@@ -159,6 +160,7 @@ async def get_entries_for_term(term, lfrom, lto, semaphore, proxies=[]):
 
 
 async def collect_words(words, **kwargs):
+    global INTERRUPTED
     global ENTRIES
     global JOBS
     global PBAR
@@ -185,8 +187,9 @@ async def collect_words(words, **kwargs):
     try:
         for job in asyncio.as_completed(JOBS):
             value = await job
-            ENTRIES.append(value)
-            PBAR.update()
+            if not INTERRUPTED:
+                ENTRIES.append(value)
+                PBAR.update()
     except:
         for job in JOBS:
             job.cancel()
@@ -202,7 +205,7 @@ def save_data(df, file):
         if SAVE is not None:
             df = [SAVE] + df
         df = pd.concat(df).reset_index(drop=True)
-        SAVE = df
+    SAVE = df
     df.to_parquet(file)
 
 
@@ -222,10 +225,12 @@ async def main(**kwargs):
             words = f.readlines()
         
         if os.path.exists(kwargs['save']):
-            print('Reading saved data...')
             if SAVE is None:
+                print('Reading saved data...')
                 SAVE = pd.read_parquet(kwargs['save'])
-            words = [w for w in words if w.strip() not in list(SAVE.term.unique())]
+            print('Filtering words list...')
+            saved_words = list(SAVE.term.unique())
+            words = [w for w in words if w.strip() not in saved_words]
 
         print('Collecting data...')
         entries, error = await collect_words(words, **collection_args)
@@ -237,6 +242,7 @@ async def main(**kwargs):
 
 def exit_process():
     print('\nInterrupting...')
+    INTERRUPTED = True
     if PBAR:
         PBAR.close()
     for job in JOBS:
@@ -246,7 +252,7 @@ def exit_process():
         save_data(ENTRIES, args.save)
     try:
         sys.exit(0)
-    except SystemExit:
+    except:
         os._exit(0)
 
 
@@ -256,5 +262,5 @@ if __name__ == '__main__':
         loop = asyncio.get_event_loop()
         loop.set_debug(args.debug)
         loop.run_until_complete(main(**vars(args)))
-    except KeyboardInterrupt:
+    except:
         exit_process()
