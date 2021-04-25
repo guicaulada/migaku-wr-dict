@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import gc
 import json
 import os
 import random
@@ -146,7 +147,8 @@ async def get_entries_for_term(term, lfrom, lto, semaphore, proxies=[]):
                 'audios': None,
             })
             return df if not df.empty else empty_entries(term)
-        except:
+        except Exception as err:
+            print(err)
             print(
                 'Failed:',
                 term,
@@ -190,7 +192,8 @@ async def collect_words(words, **kwargs):
             if not INTERRUPTED:
                 ENTRIES.append(value)
                 PBAR.update()
-    except:
+    except Exception as err:
+        print(err)
         for job in JOBS:
             job.cancel()
         error = True
@@ -231,13 +234,15 @@ async def main(**kwargs):
             print('Filtering words list...')
             saved_words = list(SAVE.term.unique())
             words = [w for w in words if w.strip() not in saved_words]
+        gc.collect()
 
-        print('Collecting data...')
-        entries, error = await collect_words(words, **collection_args)
-        if error:
-            print('An error was found, retrying in a few seconds...')
-        print('Saving collected data...')
-        save_data(entries, kwargs['save'])
+        if words:
+            print('Collecting data...')
+            entries, error = await collect_words(words, **collection_args)
+            if error:
+                print('An error was found, retrying in a few seconds...')
+            print('Saving collected data...')
+            save_data(entries, kwargs['save'])
 
 
 def exit_process():
@@ -262,5 +267,6 @@ if __name__ == '__main__':
         loop = asyncio.get_event_loop()
         loop.set_debug(args.debug)
         loop.run_until_complete(main(**vars(args)))
-    except:
+    except Exception as err:
+        print(err)
         exit_process()
