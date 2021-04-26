@@ -54,7 +54,7 @@ export async function main(args?: string[], force = false): Promise<void> {
       console.log(JSON.stringify(await wr(argv.search, argv.from, argv.to)));
       return;
     }
-    const pbar = createProgressBar();
+    const pbar = createProgressBar("Collecting data");
     const words = await getFrequencyList(argv.from, argv.words).then((words) =>
       words.slice(0, argv.nwords || words.length),
     );

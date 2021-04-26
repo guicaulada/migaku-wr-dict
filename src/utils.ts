@@ -6,10 +6,9 @@ export function chunkfy<T>(arr: T[], chunkSize: number): T[][] {
     .slice(0, Math.ceil(arr.length / chunkSize));
 }
 
-export function createProgressBar(): cliProgress.SingleBar {
+export function createProgressBar(msg: string): cliProgress.SingleBar {
   return new cliProgress.SingleBar({
-    format:
-      "{bar} {percentage}% | {duration_formatted}<{eta_formatted} | {value}/{total} | {speed}",
+    format: `${msg} | {bar} {percentage}% | {duration_formatted}<{eta_formatted} | {value}/{total} | {speed}`,
     barCompleteChar: "\u2588",
     barIncompleteChar: "\u2591",
     hideCursor: false,
