@@ -29,6 +29,11 @@ export function getArguments(args?: string[]): Arguments {
       type: "string",
       description: "Frequency list to translate from",
     })
+    .option("append", {
+      alias: "a",
+      type: "string",
+      description: "Append frequency list to default",
+    })
     .option("search", {
       alias: "s",
       type: "string",
@@ -53,6 +58,13 @@ export async function main(args?: string[], force = false): Promise<void> {
     const words = await getFrequencyList(argv.from, argv.words).then((words) =>
       words.slice(0, argv.nwords || words.length),
     );
+    if (argv.append) {
+      words.push(
+        ...(await getFrequencyList(argv.from, argv.words).then((words) =>
+          words.slice(0, argv.nwords || words.length),
+        )),
+      );
+    }
     const chunks = chunkfy(words, argv.chunkSize);
     const results = [];
     const errors: AxiosResponse[] = [];

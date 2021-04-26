@@ -28,6 +28,7 @@ export interface WordReferenceExample {
 export interface Arguments {
   words?: string;
   nwords?: number;
+  append?: string;
   search?: string;
   from: string;
   to: string;
