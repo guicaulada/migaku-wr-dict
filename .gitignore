@@ -1,9 +1,6 @@
-.vscode
-build
+*.swp
+.scannerwork
+node_modules
+yarn-error.log
+coverage
 dist
-migaku-wr-dict.egg-info
-*.apkg
-**/__pycache__
-!examples/*.apkg
-proxies.txt
-*.save

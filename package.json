@@ -1,0 +1,75 @@
+{
+  "name": "migaku-wr-dict",
+  "description": "Convert currencies using The Big Mac Index",
+  "version": "0.0.3",
+  "author": "Guilherme Caulada (Sighmir)",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "bin": {
+    "migaku-wr-dict": "./dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sighmir/migaku-wr-dict.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Sighmir/migaku-wr-dict/issues"
+  },
+  "homepage": "https://github.com/Sighmir/migaku-wr-dict#readme",
+  "scripts": {
+    "start": "node dist/index.js",
+    "start:example": "node --no-warnings example/index.js",
+    "start:dev": "nodemon --watch 'src/**/*.ts' --ignore 'src/**/*.spec.ts' --exec 'ts-node' src/index.ts",
+    "test": "jest --coverage",
+    "test:dev": "jest --coverage --watchAll",
+    "test:staged": "jest --changedSince=HEAD --passWithNoTests",
+    "test:coverage": "jest --coverage | yarn coveralls",
+    "prettier:check": "prettier --list-different 'src/**/*.{ts,tsx}'",
+    "prettier:write": "prettier --write 'src/**/*.{ts,tsx}'",
+    "build": "rm -rf ./dist && tsc && chmod +x ./dist/index.js",
+    "lint": "eslint . --ext ts",
+    "clean": "rm -rf ./dist && rm -rf ./node_modules"
+  },
+  "devDependencies": {
+    "@types/jest": "^25.1.2",
+    "@types/node": "^13.13.5",
+    "@types/yargs": "^15.0.4",
+    "@typescript-eslint/eslint-plugin": "^2.19.2",
+    "@typescript-eslint/parser": "^2.19.2",
+    "coveralls": "^3.0.9",
+    "eslint": "^6.8.0",
+    "eslint-config-prettier": "^6.10.0",
+    "husky": "^4.2.3",
+    "jest": "^25.1.0",
+    "jest-junit": "^10.0.0",
+    "lint-staged": "^10.0.7",
+    "module-alias": "^2.2.2",
+    "nodemon": "^2.0.2",
+    "prettier": "^1.19.1",
+    "ts-jest": "^25.2.0",
+    "ts-node": "^8.6.2",
+    "typescript": "^3.7.5"
+  },
+  "_moduleAliases": {
+    "@": "./src/"
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "prettier --write",
+      "yarn lint --fix"
+    ]
+  },
+  "jest-junit": {
+    "outputDirectory": "coverage"
+  },
+  "dependencies": {
+    "axios": "^0.19.2",
+    "cheerio": "^1.0.0-rc.6",
+    "yargs": "^15.3.1"
+  }
+}
