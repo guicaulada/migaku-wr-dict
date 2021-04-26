@@ -30,16 +30,16 @@ export async function wr(
   from: string,
   to: string,
 ): Promise<WordReferenceResult> {
-  const url = `http://www.wordreference.com/${from}${to}/${encodeURIComponent(
-    word.normalize("NFKD"),
+  const url = `https://www.wordreference.com/${from}${to}/${word.normalize(
+    "NFKD",
   )}`;
-  const reponse = await axios.get(url, {
+  const response = await axios.get(encodeURI(url), {
     headers: {
       "user-agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36",
     },
   });
-  return processHtml(reponse.data);
+  return processHtml(response.data);
 }
 
 function processHtml(html: string): WordReferenceResult {
