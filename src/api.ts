@@ -18,16 +18,11 @@ export async function getFrequencyList(
   if (freq.slice(0, 4) == "http") {
     return axios
       .get(freq)
-      .then(r => r.data.split("\n").map((w: string) => w.split(" ").shift()));
+      .then((r) => r.data.split("\n").map((w: string) => w.split(" ").shift()));
   } else {
-    if (fs.existsSync(freq)) {
-      const data = fs.readFileSync(freq, "utf-8");
-      return data.split("\n").map((w: string) => w.split(" ").shift()!);
-    } else {
-      console.error(`Frequency file: ${freq} not found!`);
-    }
+    const data = fs.readFileSync(freq, "utf-8");
+    return data.split("\n").map((w: string) => w.split(" ").shift()!);
   }
-  return [];
 }
 
 export async function wr(
@@ -35,41 +30,31 @@ export async function wr(
   from: string,
   to: string,
 ): Promise<WordReferenceResult> {
-  try {
-    const url = `http://www.wordreference.com/${from}${to}/${encodeURIComponent(
-      word,
-    )}`;
-    const reponse = await axios.get(url, {
-      headers: {
-        "user-agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36",
-      },
-    });
-    return processHtml(reponse.data);
-  } catch (err) {
-    console.log(`Error processing word: ${word}\n`, err);
-    return { word };
-  }
+  const url = `http://www.wordreference.com/${from}${to}/${encodeURIComponent(
+    word,
+  )}`;
+  const reponse = await axios.get(url, {
+    headers: {
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36",
+    },
+  });
+  return processHtml(reponse.data);
 }
 
 function processHtml(html: string): WordReferenceResult {
   const $ = cheerio.load(html);
   const result = {} as WordReferenceResult;
   result.word = $("h3.headerWord").text();
-  $("span.pronWR")
-    .find("span")
-    .not(".pronWR")
-    .remove();
-  result.pronWR = $("span.pronWR")
-    .text()
-    .trim();
+  $("span.pronWR").find("span").not(".pronWR").remove();
+  result.pronWR = $("span.pronWR").text().trim();
   result.audio = $("div#listen_widget audio source")
     .map((i, el) => {
       return $(el).attr("src");
     })
     .get();
   const tables = $("table.WRD")
-    .map(function(i, el) {
+    .map(function (i, el) {
       return el;
     })
     .get();
@@ -127,16 +112,12 @@ function pushExample(
   if ($(".FrEx").text() !== "") {
     $(".FrEx .tooltip").remove();
     obj.translations[obj.translations.length - 1].example.from.push(
-      $(".FrEx")
-        .text()
-        .trim(),
+      $(".FrEx").text().trim(),
     );
   } else if ($(".ToEx").text() !== "") {
     $(".ToEx .tooltip").remove();
     obj.translations[obj.translations.length - 1].example.to.push(
-      $(".ToEx")
-        .text()
-        .trim(),
+      $(".ToEx").text().trim(),
     );
   }
   return obj;
