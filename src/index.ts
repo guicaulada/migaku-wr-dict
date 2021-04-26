@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { AxiosResponse } from "axios";
+import { AxiosError } from "axios";
 import yargs from "yargs";
 import { getFrequencyList, wr } from "./api";
 import { Arguments } from "./types";
@@ -43,7 +43,7 @@ export function getArguments(args?: string[]): Arguments {
       alias: "c",
       type: "number",
       description: "Number of words to process concurrently",
-      default: 10,
+      default: 30,
     }).argv;
 }
 
@@ -67,15 +67,15 @@ export async function main(args?: string[], force = false): Promise<void> {
     }
     const chunks = chunkfy(words, argv.chunkSize);
     const results = [];
-    const errors: AxiosResponse[] = [];
+    const errors: AxiosError[] = [];
     pbar.start(words.length, 0, { speed: "N/A" });
     let start = Date.now();
     for (const chunk of chunks) {
       results.push(
         ...(await Promise.all(
           chunk.map((word) =>
-            wr(word, argv.from, argv.to).catch(({ response }) => {
-              errors.push(response as AxiosResponse);
+            wr(word, argv.from, argv.to).catch((err) => {
+              errors.push(err);
               return { word };
             }),
           ),
@@ -86,12 +86,12 @@ export async function main(args?: string[], force = false): Promise<void> {
     pbar.stop();
     if (errors.length > 0) {
       for (const err of errors) {
-        const word = decodeURIComponent(
-          err.config.url?.split("/").pop() || "unknown",
-        );
-        console.log(
-          `Error processing word: ${word} - ${err.statusText} (code: ${err.status})`,
-        );
+        try {
+          const word = decodeURIComponent(err.config.url?.split("/").pop()!);
+          console.log(`Error processing word: ${word} - ${err.message}`);
+        } catch {
+          console.log(err);
+        }
       }
     }
   }
