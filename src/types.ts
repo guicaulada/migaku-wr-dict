@@ -2,9 +2,9 @@ import { Element } from "domhandler";
 
 export interface WordReferenceResult {
   word: string;
-  pronWR: string;
-  audio: Element[];
-  translations: WordReferenceTranslation[];
+  pronWR?: string;
+  audio?: Element[];
+  translations?: WordReferenceTranslation[];
 }
 
 export interface WordReferenceTranslation {
