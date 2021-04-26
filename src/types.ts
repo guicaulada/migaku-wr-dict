@@ -30,4 +30,5 @@ export interface Arguments {
   nwords?: number;
   from: string;
   to: string;
+  chunkSize: number;
 }
