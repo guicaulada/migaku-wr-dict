@@ -1,6 +1,6 @@
 *.swp
+*.log
 .scannerwork
 node_modules
-yarn-error.log
 coverage
 dist
