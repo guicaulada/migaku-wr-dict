@@ -1,6 +1,6 @@
 # migaku-wr-dict
 
-Generate [Migaku Dictionaries](https://www.migaku.io/tools-guides/migaku-dictionary/quickstart) with [WordReference](https://www.wordreference.com/) definitions.
+Generate [Migaku Dictionaries](https://www.migaku.io/tools-guides/migaku-dictionary/quickstart) with [WordReference](https://www.wordreference.com/) definitions using the frequency lists from [hermitdave/FrequencyWords](https://github.com/hermitdave/FrequencyWords).
 
 ## Usage
 
