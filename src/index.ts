@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { AxiosResponse } from "axios";
 import yargs from "yargs";
 import { getFrequencyList, wr } from "./api";
 import { Arguments } from "./types";
@@ -23,10 +24,15 @@ export function getArguments(args?: string[]): Arguments {
       type: "number",
       description: "Number of words to translate from frequency list",
     })
-    .option("frequency", {
-      alias: "freq",
+    .option("words", {
+      alias: "w",
       type: "string",
       description: "Frequency list to translate from",
+    })
+    .option("search", {
+      alias: "s",
+      type: "string",
+      description: "Get results for a single word",
     })
     .option("chunkSize", {
       alias: "c",
@@ -39,22 +45,41 @@ export function getArguments(args?: string[]): Arguments {
 export async function main(args?: string[], force = false): Promise<void> {
   if (require.main === module || force) {
     const argv = getArguments(args);
+    if (argv.search) {
+      console.log(JSON.stringify(await wr(argv.search, argv.from, argv.to)));
+      return;
+    }
     const pbar = createProgressBar();
-    const words = await getFrequencyList(
-      argv.from,
-      argv.frequency,
-    ).then(words => words.slice(0, argv.nwords || words.length));
+    const words = await getFrequencyList(argv.from, argv.words).then((words) =>
+      words.slice(0, argv.nwords || words.length),
+    );
     const chunks = chunkfy(words, argv.chunkSize);
     const results = [];
+    const errors: AxiosResponse[] = [];
     pbar.start(words.length, 0, { speed: "N/A" });
     let start = Date.now();
     for (const chunk of chunks) {
       results.push(
-        ...(await Promise.all(chunk.map(word => wr(word, argv.from, argv.to)))),
+        ...(await Promise.all(
+          chunk.map((word) =>
+            wr(word, argv.from, argv.to).catch(({ response }) => {
+              errors.push(response as AxiosResponse);
+              return { word };
+            }),
+          ),
+        )),
       );
       updateProgressBar(pbar, results.length, start);
     }
     pbar.stop();
+    if (errors.length > 0) {
+      for (const err of errors) {
+        const word = err.config.url?.split("/").pop();
+        console.log(
+          `Error processing word: ${word} - ${err.statusText} (code: ${err.status})`,
+        );
+      }
+    }
   }
 }
 

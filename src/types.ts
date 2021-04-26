@@ -26,8 +26,9 @@ export interface WordReferenceExample {
 }
 
 export interface Arguments {
-  frequency?: string;
+  words?: string;
   nwords?: number;
+  search?: string;
   from: string;
   to: string;
   chunkSize: number;
