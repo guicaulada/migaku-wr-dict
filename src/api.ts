@@ -62,12 +62,11 @@ function processHtml(html: string): WordReferenceResult {
     })
     .get();
   const tables = $("table.WRD")
-    .map((i, el) => {
-      return $(el).html();
+    .map(function(i, el) {
+      return el;
     })
     .get();
   result.translations = tables.map(mapWordReferenceTables);
-
   return result;
 }
 
@@ -76,9 +75,6 @@ function mapWordReferenceTables(html: Element): WordReferenceTranslation {
   let result = {} as WordReferenceTranslation;
   result.title = "";
   result.translations = [];
-  console.log(
-    "=========================================================================================",
-  );
   $("tr").map((i, el) => {
     const element = $(el);
     const html = element.html();
@@ -86,16 +82,16 @@ function mapWordReferenceTables(html: Element): WordReferenceTranslation {
       if (isHeaderItem(element)) {
         result.title = element.text();
       } else if (isTranslationItem(element)) {
-        result.translations.push(createTranslationItem(html));
+        result.translations.push(createTranslationItem(el));
       } else if (isExampleItem(element)) {
-        result = pushExample(result, html);
+        result = pushExample(result, el);
       }
     }
   });
   return result;
 }
 
-function createTranslationItem(html: string): WordReferenceTranslationItem {
+function createTranslationItem(html: Element): WordReferenceTranslationItem {
   const $ = cheerio.load(html);
   const from = $("strong").text();
   $(".ToWrd em span").remove();
@@ -118,20 +114,24 @@ function createTranslationItem(html: string): WordReferenceTranslationItem {
 
 function pushExample(
   obj: WordReferenceTranslation,
-  html: string,
+  html: Element,
 ): WordReferenceTranslation {
   const $ = cheerio.load(html);
-
   if ($(".FrEx").text() !== "") {
+    $(".FrEx .tooltip").remove();
     obj.translations[obj.translations.length - 1].example.from.push(
-      $(".FrEx").text(),
+      $(".FrEx")
+        .text()
+        .trim(),
     );
   } else if ($(".ToEx").text() !== "") {
+    $(".ToEx .tooltip").remove();
     obj.translations[obj.translations.length - 1].example.to.push(
-      $(".ToEx").text(),
+      $(".ToEx")
+        .text()
+        .trim(),
     );
   }
-
   return obj;
 }
 
