@@ -12,7 +12,7 @@ export function createProgressBar(): cliProgress.SingleBar {
       "{bar} {percentage}% | {duration_formatted}<{eta_formatted} | {value}/{total} | {speed}",
     barCompleteChar: "\u2588",
     barIncompleteChar: "\u2591",
-    hideCursor: true,
+    hideCursor: false,
   });
 }
 
