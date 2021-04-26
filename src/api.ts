@@ -35,7 +35,9 @@ export async function wr(
   from: string,
   to: string,
 ): Promise<WordReferenceResult> {
-  const url = `http://www.wordreference.com/${from}${to}/${word}`;
+  const url = `http://www.wordreference.com/${from}${to}/${encodeURIComponent(
+    word,
+  )}`;
   const reponse = await axios.get(url, {
     headers: {
       "user-agent":
