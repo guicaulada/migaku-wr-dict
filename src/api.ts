@@ -31,7 +31,7 @@ export async function wr(
   to: string,
 ): Promise<WordReferenceResult> {
   const url = `http://www.wordreference.com/${from}${to}/${encodeURIComponent(
-    word,
+    word.normalize("NFKD"),
   )}`;
   const reponse = await axios.get(url, {
     headers: {
