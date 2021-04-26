@@ -74,7 +74,9 @@ export async function main(args?: string[], force = false): Promise<void> {
     pbar.stop();
     if (errors.length > 0) {
       for (const err of errors) {
-        const word = err.config.url?.split("/").pop();
+        const word = decodeURIComponent(
+          err.config.url?.split("/").pop() || "unknown",
+        );
         console.log(
           `Error processing word: ${word} - ${err.statusText} (code: ${err.status})`,
         );
