@@ -37,19 +37,21 @@ export function generateMigakuDictionary(wrdata: WordReferenceResult[]) {
     .map((data) => data.word);
   const dictionary = [] as MigakuDictionaryItem[];
   for (const data of wrdata) {
-    data.translations.forEach((tables) => {
-      tables.translations.forEach((tr) => {
-        dictionary.push({
-          term: tr.from,
-          altterm: "",
-          pronunciation: data.pronWR || "",
-          definition: tr.to || "",
-          pos: tr.fromType || "",
-          examples: tr.example.from.concat(tr.example.to).join("\n"),
-          audio: data.audio[0],
+    if (data.translations) {
+      data.translations.forEach((tables) => {
+        tables.translations.forEach((tr) => {
+          dictionary.push({
+            term: tr.from,
+            altterm: "",
+            pronunciation: data.pronWR || "",
+            definition: tr.to || "",
+            pos: tr.fromType || "",
+            examples: tr.example.from.concat(tr.example.to).join("\n"),
+            audio: data.audio[0],
+          });
         });
       });
-    });
+    }
   }
   return { header, frequency, dictionary };
 }
