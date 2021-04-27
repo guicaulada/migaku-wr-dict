@@ -1,10 +1,24 @@
-import { Element } from "domhandler";
+export interface Arguments {
+  words?: string;
+  nwords?: number;
+  append?: boolean;
+  get?: string;
+  from: string;
+  to: string;
+  chunkSize: number;
+  output: string;
+  data?: string;
+  save?: string;
+  offset: number;
+  merge?: string[];
+}
 
 export interface WordReferenceResult {
   word: string;
   pronWR?: string;
-  audio?: Element[];
-  translations?: WordReferenceTranslation[];
+  audio: string[];
+  translations: WordReferenceTranslation[];
+  frequency?: number;
 }
 
 export interface WordReferenceTranslation {
@@ -25,12 +39,23 @@ export interface WordReferenceExample {
   to: string[];
 }
 
-export interface Arguments {
-  words?: string;
-  nwords?: number;
-  append?: string;
-  search?: string;
-  from: string;
-  to: string;
-  chunkSize: number;
+export interface FrequencyItem {
+  word: string;
+  frequency: number;
+}
+
+export interface MigakuDictionary {
+  header: string;
+  frequency: string[];
+  dictionary: MigakuDictionaryItem[];
+}
+
+export interface MigakuDictionaryItem {
+  term: string;
+  altterm: string;
+  pronunciation: string;
+  definition: string;
+  pos: string;
+  examples: string;
+  audio: string;
 }
