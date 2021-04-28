@@ -31,6 +31,17 @@ Please, report any issues and I will try to fix them as soon as possible.
 - Get WordReference JSON data for an specific word "rainbow"
   - `npx migaku-wr-dict -f en -t ar -g rainbow`
 
+## Installation
+
+After generating your `<dictionary>.zip` file you must extract it on your Migaku Dictionary `user_files` language folder, if installed correctly you should have this structure:
+
+- `user_files/dictionaries/<language>/header.csv`
+- `user_files/dictionaries/<language>/frequency.json`
+- `user_files/dictionaries/<language>/<dictionary>/dictionary.json`
+
+Replace `<language>` by your desired language like "English", "German", "Arabic", etc.  
+Replace `<dictionary>` by your dictionary name for example `migaku_wr_dict_enar`
+
 ## License
 
 ```
