@@ -18,7 +18,7 @@ Please, report any issues and I will try to fix them as soon as possible.
   - `npx migaku-wr-dict -f en -t ar -n 100000`
 - Generate English to Arabic dictionary with 100.000 most used English words to specific output file
   - `npx migaku-wr-dict -f en -t ar -n 100000 -o /path/to/dict/migaku_wr_dict_enar`
-- Generate English to Arabic dictionary with 100.000 most used words and save Word Reference data for future use
+- Generate English to Arabic dictionary with 100.000 most used words and save data for future use
   - `npx migaku-wr-dict -f en -t ar -n 100000 -s migaku-wr-data`
 - Generate English to Arabic dictionary from saved Word Reference data
   - `npx migaku-wr-dict -f en -t ar -n 100000 -d migaku-wr-data`
