@@ -20,7 +20,7 @@ Please, report any issues and I will try to fix them as soon as possible.
   - `npx migaku-wr-dict -f en -t ar -n 100000 -o /path/to/dict/migaku_wr_dict_enar`
 - Generate English to Arabic dictionary with 100.000 most used words and save data for future use
   - `npx migaku-wr-dict -f en -t ar -n 100000 -s migaku-wr-data`
-- Generate English to Arabic dictionary from saved Word Reference data
+- Generate English to Arabic dictionary from saved WordReference data
   - `npx migaku-wr-dict -f en -t ar -n 100000 -d migaku-wr-data`
 - Generate English to Arabic with 100.000 most used words and chunk size of 50 (not recommended)
   - `npx migaku-wr-dict -f en -t ar -n 100000 -c 50`
@@ -28,7 +28,7 @@ Please, report any issues and I will try to fix them as soon as possible.
   - `npx migaku-wr-dict -f en -t ar -w frequency.txt`
 - Generate English to Arabic with 100.000 most used words and append specific word frequency list
   - `npx migaku-wr-dict -f en -t ar -n 100000 -a frequency.txt`
-- Get Word Reference JSON data for an specific word "rainbow"
+- Get WordReference JSON data for an specific word "rainbow"
   - `npx migaku-wr-dict -f en -t ar -g rainbow`
 
 ## License
