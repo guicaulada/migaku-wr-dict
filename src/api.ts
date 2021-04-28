@@ -112,6 +112,7 @@ export async function wr(
   });
   const result = processHtml(response.data);
   result.frequency = frequency;
+  result.word = word;
   return result;
 }
 
