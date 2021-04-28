@@ -1,7 +1,7 @@
 {
   "name": "migaku-wr-dict",
   "description": "Generate Migaku Dictionaries with WordReference definitions",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Guilherme Caulada (Sighmir)",
   "main": "dist/index.js",
   "license": "MIT",
