@@ -1,7 +1,7 @@
 {
   "name": "migaku-wr-dict",
-  "description": "Convert currencies using The Big Mac Index",
-  "version": "0.0.3",
+  "description": "Generate Migaku Dictionaries with WordReference definitions",
+  "version": "1.0.0",
   "author": "Guilherme Caulada (Sighmir)",
   "main": "dist/index.js",
   "license": "MIT",
@@ -56,10 +56,7 @@
     "@": "./src/"
   },
   "lint-staged": {
-    "*.{ts,js}": [
-      "prettier --write",
-      "yarn lint --fix"
-    ]
+    "*.{ts,js}": ["prettier --write", "yarn lint --fix"]
   },
   "jest-junit": {
     "outputDirectory": "coverage"
