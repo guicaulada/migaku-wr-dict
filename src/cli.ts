@@ -1,8 +1,19 @@
 import { AxiosError } from "axios";
 import yargs from "yargs";
-import { getFrequencyList, wr } from "./api";
+import {
+  generateMigakuDictionary,
+  getFrequencyList,
+  wr,
+  zipMigakuDictionary,
+} from "./api";
 import { Arguments, FrequencyItem, WordReferenceResult } from "./types";
-import { chunkfy, createProgressBar, updateProgressBar } from "./utils";
+import {
+  chunkfy,
+  createProgressBar,
+  readJSON,
+  updateProgressBar,
+  writeJSON,
+} from "./utils";
 
 export function getArguments(args?: string[]): Arguments {
   return (args ? yargs(args) : yargs)
@@ -22,7 +33,7 @@ export function getArguments(args?: string[]): Arguments {
       alias: "o",
       type: "string",
       description: "Output file for dictionary",
-      default: "migaku-wr-dict",
+      default: "migaku_wr_dict",
     })
     .option("chunkSize", {
       alias: "c",
@@ -35,6 +46,11 @@ export function getArguments(args?: string[]): Arguments {
       type: "number",
       description: "Offset start of the frequency list",
       default: 0,
+    })
+    .option("noExamples", {
+      alias: "x",
+      type: "boolean",
+      description: "Remove examples from definition",
     })
     .option("nwords", {
       alias: "n",
@@ -65,6 +81,11 @@ export function getArguments(args?: string[]): Arguments {
       alias: "s",
       type: "string",
       description: "Output file for WordReference data",
+    })
+    .option("header", {
+      alias: "h",
+      type: "string",
+      description: "Generate Migaku Dictionary header file",
     }).argv;
 }
 
@@ -119,5 +140,41 @@ export function printErrors(errors: AxiosError[]) {
         console.log(err);
       }
     }
+  }
+}
+
+export function getOutputFile(path: string, from: string, to: string) {
+  if (path.slice(-1) == "/") path = path + "migaku_wr_dict";
+  return `${path.replace(".zip", "")}_${from}${to}`;
+}
+
+export async function printWordReference(
+  word: string,
+  from: string,
+  to: string,
+) {
+  console.log(JSON.stringify(await wr(word, from, to)));
+}
+
+export function generateFromData(argv: Arguments) {
+  const output = getOutputFile(argv.output, argv.from, argv.to);
+  const data = readJSON<WordReferenceResult[]>(argv.data!);
+  const dict = generateMigakuDictionary(data, argv.header, !argv.noExamples);
+  zipMigakuDictionary(output, dict);
+}
+
+export async function generateFromResults(argv: Arguments) {
+  const freq = await getFrequency(argv);
+  const output = getOutputFile(argv.output, argv.from, argv.to);
+  const { results, errors } = await getResults(freq, argv);
+  if (argv.data && argv.append) {
+    const data = readJSON<WordReferenceResult[]>(argv.data);
+    results.unshift(...data);
+  }
+  printErrors(errors);
+  const dict = generateMigakuDictionary(results, argv.header, !argv.noExamples);
+  zipMigakuDictionary(output, dict);
+  if (argv.save) {
+    writeJSON(argv.save, results);
   }
 }

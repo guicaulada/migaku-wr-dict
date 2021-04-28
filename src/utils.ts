@@ -29,6 +29,7 @@ export function updateProgressBar(
 }
 
 export function writeJSON(path: string, data: any) {
+  if (path.slice(-1) == "/") path = path.slice(0, -1);
   if (path.slice(-5) != ".json") {
     path = path + ".json";
   }

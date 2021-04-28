@@ -10,7 +10,8 @@ export interface Arguments {
   data?: string;
   save?: string;
   offset: number;
-  merge?: string[];
+  header?: string;
+  noExamples?: boolean;
 }
 
 export interface WordReferenceResult {
@@ -45,7 +46,7 @@ export interface FrequencyItem {
 }
 
 export interface MigakuDictionary {
-  header: string;
+  header?: string;
   frequency: string[];
   dictionary: MigakuDictionaryItem[];
 }

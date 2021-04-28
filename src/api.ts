@@ -7,6 +7,7 @@ import {
   FrequencyItem,
   MigakuDictionary,
   MigakuDictionaryItem,
+  WordReferenceExample,
   WordReferenceResult,
   WordReferenceTranslation,
   WordReferenceTranslationItem,
@@ -20,18 +21,33 @@ export function zipMigakuDictionary(path: string, dict: MigakuDictionary) {
     Buffer.from(JSON.stringify(dict.dictionary), "utf-8"),
   );
   file.addFile(
-    `${folderName}/frequency.json`,
+    `frequency.json`,
     Buffer.from(JSON.stringify(dict.frequency), "utf-8"),
   );
-  file.addFile(`${folderName}/header.csv`, Buffer.from(dict.header, "utf-8"));
+  if (dict.header) {
+    file.addFile(`header.csv`, Buffer.from(dict.header, "utf-8"));
+  }
   if (path.slice(-4) != ".zip") {
     path = path + ".zip";
   }
   fs.writeFileSync(path, file.toBuffer());
 }
 
-export function generateMigakuDictionary(wrdata: WordReferenceResult[]) {
-  const header = "term,altterm,pronunciation,definition,pos,examples,audio";
+export function generateMigakuDefinition(
+  definition: string,
+  examples: WordReferenceExample,
+  exOnDef?: boolean,
+) {
+  if (!definition) return "";
+  if (!exOnDef || !examples) return definition;
+  return `${definition}\n\n${examples.from.concat(examples.to).join("\n")}`;
+}
+
+export function generateMigakuDictionary(
+  wrdata: WordReferenceResult[],
+  header?: string,
+  exOnDef?: boolean,
+): MigakuDictionary {
   const frequency = wrdata
     .sort((a, b) => (b.frequency || 0) - (a.frequency || 0))
     .map((data) => data.word);
@@ -44,7 +60,7 @@ export function generateMigakuDictionary(wrdata: WordReferenceResult[]) {
             term: tr.from,
             altterm: "",
             pronunciation: data.pronWR || "",
-            definition: tr.to || "",
+            definition: generateMigakuDefinition(tr.to, tr.example, exOnDef),
             pos: tr.fromType || "",
             examples: tr.example.from.concat(tr.example.to).join("\n"),
             audio: data.audio[0],
