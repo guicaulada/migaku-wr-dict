@@ -5,6 +5,7 @@ import { Element } from "domhandler";
 import fs from "fs";
 import {
   FrequencyItem,
+  Language,
   MigakuDictionary,
   MigakuDictionaryItem,
   WordReferenceExample,
@@ -95,6 +96,36 @@ export async function getFrequencyList(
   }
 }
 
+export async function getAvailableLanguages(): Promise<Language[]> {
+  const url = "https://www.wordreference.com/";
+  const response = await axios.get(encodeURI(url), {
+    headers: {
+      "user-agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36",
+    },
+  });
+  const $ = cheerio.load(response.data);
+  const langNames = $(".links")
+    .find("a")
+    .map((i, el) => {
+      return $(el).text();
+    })
+    .get()
+    .map((e) => String(e));
+  const langCodes = $(".links")
+    .find("a")
+    .map((i, el) => {
+      return $(el).attr("hreflang");
+    })
+    .get()
+    .map((e) => String(e));
+  const langs = langCodes.reduce((langs: Language[], code, i) => {
+    langs.push({ code, name: langNames[i] });
+    return langs;
+  }, []);
+  return langs;
+}
+
 export async function wr(
   word: string,
   from: string,
@@ -113,6 +144,10 @@ export async function wr(
   const result = processHtml(response.data);
   result.frequency = frequency;
   result.word = word;
+  if (!result.translations.length) {
+    response.statusText = "Translation not found.";
+    throw response;
+  }
   return result;
 }
 

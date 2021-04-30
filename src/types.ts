@@ -1,10 +1,15 @@
+export interface Language {
+  code: string;
+  name: string;
+}
+
 export interface Arguments {
   words?: string;
   nwords?: number;
   append?: boolean;
   get?: string;
-  from: string;
-  to: string;
+  from?: string;
+  to?: string;
   chunkSize: number;
   output: string;
   data?: string;
@@ -12,6 +17,7 @@ export interface Arguments {
   offset: number;
   header?: string;
   noExamples?: boolean;
+  langs?: boolean;
 }
 
 export interface WordReferenceResult {

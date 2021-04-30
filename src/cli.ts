@@ -1,7 +1,9 @@
 import { AxiosError } from "axios";
+import { printTable } from "console-table-printer";
 import yargs from "yargs";
 import {
   generateMigakuDictionary,
+  getAvailableLanguages,
   getFrequencyList,
   wr,
   zipMigakuDictionary,
@@ -15,19 +17,19 @@ import {
   writeJSON,
 } from "./utils";
 
-export function getArguments(args?: string[]): Arguments {
-  return (args ? yargs(args) : yargs)
+export async function getArguments(args?: string[]): Promise<Arguments> {
+  const langs = await getAvailableLanguages();
+  const langCodes = langs.map((lang) => lang.code);
+  const pargs = (args ? yargs(args) : yargs)
     .option("from", {
       alias: "f",
       type: "string",
       description: "Language to translate from",
-      required: true,
     })
     .option("to", {
       alias: "t",
       type: "string",
       description: "Language to translate to",
-      required: true,
     })
     .option("output", {
       alias: "o",
@@ -86,16 +88,29 @@ export function getArguments(args?: string[]): Arguments {
       alias: "h",
       type: "string",
       description: "Generate Migaku Dictionary header file",
-    }).argv;
+    })
+    .option("langs", {
+      alias: "l",
+      type: "boolean",
+      description: "List available languages",
+    })
+    .choices("from", langCodes)
+    .choices("to", langCodes);
+  const argv = pargs.argv;
+  if (!argv.langs) {
+    pargs.demandOption("from");
+    pargs.demandOption("to");
+  }
+  return pargs.argv;
 }
 
 export async function getFrequency(argv: Arguments): Promise<FrequencyItem[]> {
-  const words = await getFrequencyList(argv.from, argv.words).then((words) =>
+  const words = await getFrequencyList(argv.from!, argv.words).then((words) =>
     words.slice(argv.offset, argv.offset + (argv.nwords || words.length)),
   );
   if (argv.append && argv.words) {
     words.push(
-      ...(await getFrequencyList(argv.from, argv.words).then((words) =>
+      ...(await getFrequencyList(argv.from!, argv.words).then((words) =>
         words.slice(0, argv.nwords || words.length),
       )),
     );
@@ -117,7 +132,7 @@ export async function getResults(
     results.push(
       ...(await Promise.all(
         chunk.map((freq) =>
-          wr(freq.word, argv.from, argv.to, freq.frequency).catch((err) => {
+          wr(freq.word, argv.from!, argv.to!, freq.frequency).catch((err) => {
             errors.push(err);
             return freq as WordReferenceResult;
           }),
@@ -157,7 +172,7 @@ export async function printWordReference(
 }
 
 export function generateFromData(argv: Arguments) {
-  const output = getOutputFile(argv.output, argv.from, argv.to);
+  const output = getOutputFile(argv.output, argv.from!, argv.to!);
   const data = readJSON<WordReferenceResult[]>(argv.data!);
   const dict = generateMigakuDictionary(data, argv.header, !argv.noExamples);
   zipMigakuDictionary(output, dict);
@@ -165,7 +180,7 @@ export function generateFromData(argv: Arguments) {
 
 export async function generateFromResults(argv: Arguments) {
   const freq = await getFrequency(argv);
-  const output = getOutputFile(argv.output, argv.from, argv.to);
+  const output = getOutputFile(argv.output, argv.from!, argv.to!);
   const { results, errors } = await getResults(freq, argv);
   if (argv.data && argv.append) {
     const data = readJSON<WordReferenceResult[]>(argv.data);
@@ -177,4 +192,9 @@ export async function generateFromResults(argv: Arguments) {
   if (argv.save) {
     writeJSON(argv.save, results);
   }
+}
+
+export async function printAvailableLanguages() {
+  const langs = await getAvailableLanguages();
+  printTable(langs);
 }
