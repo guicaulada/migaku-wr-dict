@@ -43,7 +43,8 @@ After generating your `<dictionary>.zip` file you must extract it on your Migaku
 Replace `<language>` by your desired language like "English", "German", "Arabic", etc.  
 Replace `<dictionary>` by your dictionary name for example `migaku_wr_dict_enar`
 
-If you install the dictionary before the frequency file you will need to remove the dictionary and reimport it for the frequency to be applied.
+If you install the dictionary before the frequency file you will need to remove the dictionary and reimport it for the frequency to be applied.  
+The conjugation file might need to be installed using the "Install Conjugation Data From File" option on Migaku Dictionary Settings.
 
 ## License
 
