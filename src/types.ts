@@ -23,8 +23,9 @@ export interface Arguments {
 export interface WordReferenceResult {
   word: string;
   pronWR?: string;
-  audio: string[];
-  translations: WordReferenceTranslation[];
+  audio?: string[];
+  inflections?: string[];
+  translations?: WordReferenceTranslation[];
   frequency?: number;
 }
 
@@ -51,9 +52,15 @@ export interface FrequencyItem {
   frequency: number;
 }
 
+export interface ConjugationItem {
+  inflected: string;
+  dict: string[];
+}
+
 export interface MigakuDictionary {
   header?: string;
   frequency: string[];
+  conjugations: ConjugationItem[];
   dictionary: MigakuDictionaryItem[];
 }
 

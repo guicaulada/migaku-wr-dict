@@ -1,9 +1,10 @@
 import AdmZip from "adm-zip";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import cheerio, { Cheerio } from "cheerio";
 import { Element } from "domhandler";
 import fs from "fs";
 import {
+  ConjugationItem,
   FrequencyItem,
   Language,
   MigakuDictionary,
@@ -24,6 +25,10 @@ export function zipMigakuDictionary(path: string, dict: MigakuDictionary) {
   file.addFile(
     `frequency.json`,
     Buffer.from(JSON.stringify(dict.frequency), "utf-8"),
+  );
+  file.addFile(
+    `conjugations.json`,
+    Buffer.from(JSON.stringify(dict.conjugations), "utf-8"),
   );
   if (dict.header) {
     file.addFile(`header.csv`, Buffer.from(dict.header, "utf-8"));
@@ -52,6 +57,14 @@ export function generateMigakuDictionary(
   const frequency = wrdata
     .sort((a, b) => (b.frequency || 0) - (a.frequency || 0))
     .map((data) => data.word);
+  const conjugations = wrdata.reduce((conjs: ConjugationItem[], data) => {
+    if (data.inflections) {
+      for (const inflected of data.inflections) {
+        conjs.push({ inflected, dict: [data.word] });
+      }
+    }
+    return conjs;
+  }, []);
   const dictionary = [] as MigakuDictionaryItem[];
   for (const data of wrdata) {
     if (data.translations) {
@@ -64,13 +77,13 @@ export function generateMigakuDictionary(
             definition: generateMigakuDefinition(tr.to, tr.example, exOnDef),
             pos: tr.fromType || "",
             examples: tr.example.from.concat(tr.example.to).join("\n"),
-            audio: data.audio[0],
+            audio: data.audio ? data.audio[0] : "",
           });
         });
       });
     }
   }
-  return { header, frequency, dictionary };
+  return { header, frequency, conjugations, dictionary };
 }
 
 function mapFrequencyList(data: string): FrequencyItem[] {
@@ -123,6 +136,7 @@ export async function getAvailableLanguages(): Promise<Language[]> {
     langs.push({ code, name: langNames[i] });
     return langs;
   }, []);
+  langs.push({ code: "en", name: "English" });
   return langs;
 }
 
@@ -144,9 +158,10 @@ export async function wr(
   const result = processHtml(response.data);
   result.frequency = frequency;
   result.word = word;
-  if (!result.translations.length) {
-    response.statusText = "Translation not found.";
-    throw response;
+  if (!result.translations || !result.translations.length) {
+    const err = (response as unknown) as AxiosError;
+    err.message = "Translation not found.";
+    throw err;
   }
   return result;
 }
@@ -163,6 +178,13 @@ function processHtml(html: string): WordReferenceResult {
     })
     .get()
     .map((e) => `https://www.wordreference.com${e}`);
+  result.inflections = $(".inflectionsSection dt.ListInfl")
+    .map(function (i, el) {
+      return $(el).text();
+    })
+    .get()
+    .map((e) => String(e))
+    .filter((v, i, arr) => i == arr.indexOf(v));
   const tables = $("table.WRD")
     .map(function (i, el) {
       return el;

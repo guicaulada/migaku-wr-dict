@@ -37,6 +37,7 @@ After generating your `<dictionary>.zip` file you must extract it on your Migaku
 
 - `user_files/dictionaries/header.csv` (optional)
 - `user_files/dictionaries/<language>/frequency.json`
+- `user_files/dictionaries/<language>/conjugations.json`
 - `user_files/dictionaries/<language>/<dictionary>/dictionary.json`
 
 Replace `<language>` by your desired language like "English", "German", "Arabic", etc.  
