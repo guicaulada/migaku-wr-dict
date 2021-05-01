@@ -146,10 +146,9 @@ export async function wr(
   to: string,
   frequency?: number,
 ): Promise<WordReferenceResult> {
-  const url = `https://www.wordreference.com/${from}${to}/${word.normalize(
-    "NFKD",
-  )}`;
-  const response = await axios.get(encodeURI(url), {
+  const path = `/${from}${to}/${word.normalize("NFKD")}`;
+  const url = `https://www.wordreference.com${path}`;
+  const response = await axios.get<string>(encodeURI(url), {
     headers: {
       "user-agent":
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36",
@@ -159,9 +158,11 @@ export async function wr(
   result.frequency = frequency;
   result.word = word;
   if (!result.translations || !result.translations.length) {
-    const err = (response as unknown) as AxiosError;
-    err.message = "Translation not found.";
-    throw err;
+    if (response.data.includes("recaptcha")) {
+      const err = (response as unknown) as AxiosError;
+      err.message = "reCAPTCHA";
+      throw err;
+    }
   }
   return result;
 }

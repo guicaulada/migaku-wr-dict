@@ -121,25 +121,36 @@ export async function getFrequency(argv: Arguments): Promise<FrequencyItem[]> {
 export async function getResults(
   frequencies: FrequencyItem[],
   argv: Arguments,
+  msg = "Collecting data",
 ): Promise<{ results: WordReferenceResult[]; errors: AxiosError[] }> {
-  const pbar = createProgressBar("Collecting data");
+  const pbar = createProgressBar(msg);
   const results = [];
   const chunks = chunkfy(frequencies, argv.chunkSize);
   const errors: AxiosError[] = [];
   pbar.start(frequencies.length, 0, { speed: "N/A" });
-  let start = Date.now();
+  const start = Date.now();
   for (const chunk of chunks) {
-    results.push(
-      ...(await Promise.all(
-        chunk.map((freq) =>
-          wr(freq.word, argv.from!, argv.to!, freq.frequency).catch((err) => {
-            errors.push(err);
-            return freq as WordReferenceResult;
-          }),
-        ),
-      )),
+    const chunkRecaptcha: FrequencyItem[] = [];
+    const chunkErrors: AxiosError[] = [];
+    const chunkResults = await Promise.all(
+      chunk.map((freq) =>
+        wr(freq.word, argv.from!, argv.to!, freq.frequency).catch((err) => {
+          if (err.message.includes("reCAPTCHA")) {
+            chunkRecaptcha.push(freq);
+            return null as any;
+          } else {
+            chunkErrors.push(err);
+            return freq;
+          }
+        }),
+      ),
     );
+    errors.push(...chunkErrors);
+    results.push(...chunkResults.filter((result) => result));
     updateProgressBar(pbar, results.length, start);
+    if (chunkRecaptcha.length) {
+      chunks.push(chunkRecaptcha);
+    }
   }
   pbar.stop();
   return { results, errors };
