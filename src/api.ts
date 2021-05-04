@@ -60,7 +60,9 @@ export function generateMigakuDictionary(
   const conjugations = wrdata.reduce((conjs: ConjugationItem[], data) => {
     if (data.inflections) {
       for (const inflected of data.inflections) {
-        conjs.push({ inflected, dict: [data.word] });
+        if (inflected != "") {
+          conjs.push({ inflected, dict: [data.word] });
+        }
       }
     }
     return conjs;
