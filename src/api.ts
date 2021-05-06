@@ -14,6 +14,11 @@ import {
   WordReferenceTranslation,
   WordReferenceTranslationItem,
 } from "./types";
+import { expand } from "./utils";
+
+export function getValidMonolingual() {
+  return ["en", "es", "it"];
+}
 
 export function zipMigakuDictionary(path: string, dict: MigakuDictionary) {
   const file = new AdmZip();
@@ -23,15 +28,15 @@ export function zipMigakuDictionary(path: string, dict: MigakuDictionary) {
     Buffer.from(JSON.stringify(dict.dictionary), "utf-8"),
   );
   file.addFile(
-    `frequency.json`,
+    "frequency.json",
     Buffer.from(JSON.stringify(dict.frequency), "utf-8"),
   );
   file.addFile(
-    `conjugations.json`,
+    "conjugations.json",
     Buffer.from(JSON.stringify(dict.conjugations), "utf-8"),
   );
   if (dict.header) {
-    file.addFile(`header.csv`, Buffer.from(dict.header, "utf-8"));
+    file.addFile("header.csv", Buffer.from(dict.header, "utf-8"));
   }
   if (path.slice(-4) != ".zip") {
     path = path + ".zip";
@@ -158,7 +163,7 @@ export async function wr(
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36",
     },
   });
-  const result = processHtml(response.data);
+  const result = processHtml(response.data, from == to);
   result.frequency = frequency;
   result.word = word;
   if (!result.translations || !result.translations.length) {
@@ -171,7 +176,7 @@ export async function wr(
   return result;
 }
 
-function processHtml(html: string): WordReferenceResult {
+function processHtml(html: string, monolingual?: boolean): WordReferenceResult {
   const $ = cheerio.load(html);
   const result = {} as WordReferenceResult;
   result.word = $("h3.headerWord").text();
@@ -184,22 +189,121 @@ function processHtml(html: string): WordReferenceResult {
     .get()
     .map((e) => `https://www.wordreference.com${e}`);
   result.inflections = $(".inflectionsSection dt.ListInfl")
-    .map(function (i, el) {
+    .map((i, el) => {
       return $(el).text();
     })
     .get()
     .map((e) => String(e))
     .filter((v, i, arr) => i == arr.indexOf(v));
-  const tables = $("table.WRD")
-    .map(function (i, el) {
-      return el;
-    })
-    .get();
-  result.translations = tables.map(mapWordReferenceTables);
+  if (!monolingual) {
+    const tables = $("table.WRD").get();
+    result.translations = tables.map(mapWordReferenceTables);
+  } else {
+    const lists = $("div.entryRH").get();
+    result.translations = expand(lists.map(mapWorldReferenceListEntries));
+  }
   return result;
 }
 
-function mapWordReferenceTables(html: Element): WordReferenceTranslation {
+function mapWorldReferenceListEntries(
+  html: Element | string,
+): WordReferenceTranslation[] {
+  const $ = cheerio.load(html);
+  const rh = $.html().split("rh_me");
+  const div = "<div>";
+  const prefix = '<span class="';
+  const suffix = "</div>";
+  return rh.slice(1).map((rest) => {
+    let html = `${div}${prefix}rh_me${rest}`;
+    if (html.endsWith(prefix)) {
+      html = html.slice(0, -prefix.length);
+    }
+    if (!html.endsWith(suffix)) {
+      html = html + suffix;
+    }
+    return mapWordReferenceLists(html);
+  });
+}
+
+function mapWordReferenceLists(
+  html: Element | string,
+): WordReferenceTranslation {
+  const $ = cheerio.load(html);
+  let result = {} as WordReferenceTranslation;
+  $(".rh_me sup").remove();
+  result.title = $(".rh_me").text();
+  result.translations = [];
+  const pos = $(".rh_empos")
+    .map((i, el) => {
+      return $(el).text();
+    })
+    .get()
+    .map((e) => String(e));
+  $("ol").map((i, el) => {
+    const $ = cheerio.load(el);
+    const list = $("ol > li").get();
+    result.translations.push(
+      ...mapTranslationLists(result.title, pos[i], list),
+    );
+  });
+  return result;
+}
+
+function mapTranslationLists(title: string, pos: string, li: Element[]) {
+  return expand(
+    li.map((el) => createListTranslationItem(title, pos, el)),
+  ).filter((tr) => tr.to != "");
+}
+
+function createListTranslationItem(
+  from: string,
+  fromType: string,
+  html: Element | string,
+): WordReferenceTranslationItem[] {
+  const $ = cheerio.load(html);
+  $(".rh_def .rh_lab").remove();
+  $(".rh_def .rh_cat").remove();
+  $(".rh_sdef .rh_lab").remove();
+  $(".rh_sdef .rh_cat").remove();
+  const ex = $(".rh_def .rh_ex")
+    .map((i, el) => {
+      return $(el).text();
+    })
+    .get()
+    .map((e) => String(e).trim());
+  const sec_ex = $(".rh_sdef .rh_ex")
+    .map((i, el) => {
+      return $(el).text();
+    })
+    .get()
+    .map((e) => String(e).trim());
+  const sublists = $("li li").get();
+  $(".rh_def > .rh_ex").remove();
+  $(".rh_def > ul").remove();
+  let def = $(".rh_def").text().trim().replace(/:/g, "");
+  if (sublists && sublists.length) {
+    return mapTranslationLists(def, fromType, sublists);
+  } else if (!def) {
+    $(".rh_sdef > .rh_ex").remove();
+    def = $(".rh_sdef").text().trim().replace(/:/g, "");
+  }
+  return [
+    {
+      from,
+      fromType,
+      toType: fromType,
+      to: def,
+      example: {
+        from: [],
+        to: ex.concat(sec_ex),
+      },
+    },
+  ];
+}
+
+function mapWordReferenceTables(
+  html: Element | string,
+): WordReferenceTranslation {
   const $ = cheerio.load(html);
   let result = {} as WordReferenceTranslation;
   result.title = "";
@@ -208,19 +312,21 @@ function mapWordReferenceTables(html: Element): WordReferenceTranslation {
     const element = $(el);
     const html = element.html();
     if (html) {
-      if (isHeaderItem(element)) {
+      if (isTableHeaderItem(element)) {
         result.title = element.text();
-      } else if (isTranslationItem(element)) {
-        result.translations.push(createTranslationItem(el));
-      } else if (isExampleItem(element)) {
-        result = pushExample(result, el);
+      } else if (isTableTranslationItem(element)) {
+        result.translations.push(createTableTranslationItem(el));
+      } else if (isTableExampleItem(element)) {
+        result = pushTableExample(result, el);
       }
     }
   });
   return result;
 }
 
-function createTranslationItem(html: Element): WordReferenceTranslationItem {
+function createTableTranslationItem(
+  html: Element | string,
+): WordReferenceTranslationItem {
   const $ = cheerio.load(html);
   const from = $("strong").text();
   $(".ToWrd em span").remove();
@@ -241,9 +347,9 @@ function createTranslationItem(html: Element): WordReferenceTranslationItem {
   };
 }
 
-function pushExample(
+function pushTableExample(
   obj: WordReferenceTranslation,
-  html: Element,
+  html: Element | string,
 ): WordReferenceTranslation {
   const $ = cheerio.load(html);
   if ($(".FrEx").text() !== "") {
@@ -260,17 +366,17 @@ function pushExample(
   return obj;
 }
 
-function isHeaderItem(element: Cheerio): boolean {
+function isTableHeaderItem(element: Cheerio): boolean {
   return element.attr("class") === "wrtopsection";
 }
 
-function isTranslationItem(element: Cheerio): boolean {
+function isTableTranslationItem(element: Cheerio): boolean {
   const id = element.attr("id");
   const clss = element.attr("class");
   return id !== undefined && (clss === "even" || clss === "odd");
 }
 
-function isExampleItem(element: Cheerio): boolean {
+function isTableExampleItem(element: Cheerio): boolean {
   const id = element.attr("id");
   const clss = element.attr("class");
   return id === undefined && (clss === "even" || clss === "odd");

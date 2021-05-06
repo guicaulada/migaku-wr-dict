@@ -5,6 +5,7 @@ import {
   generateMigakuDictionary,
   getAvailableLanguages,
   getFrequencyList,
+  getValidMonolingual,
   wr,
   zipMigakuDictionary,
 } from "./api";
@@ -93,13 +94,19 @@ export async function getArguments(args?: string[]): Promise<Arguments> {
       alias: "l",
       type: "boolean",
       description: "List available languages",
-    })
-    .choices("from", langCodes)
-    .choices("to", langCodes);
+    });
   const argv = pargs.argv;
   if (!argv.langs) {
     pargs.demandOption("from");
     pargs.demandOption("to");
+    if (argv.from == argv.to) {
+      const monolingual = getValidMonolingual();
+      pargs.choices("from", monolingual);
+      pargs.choices("to", monolingual);
+    } else {
+      pargs.choices("from", langCodes);
+      pargs.choices("to", langCodes);
+    }
   }
   return pargs.argv;
 }

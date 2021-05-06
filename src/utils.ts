@@ -39,3 +39,10 @@ export function writeJSON(path: string, data: any) {
 export function readJSON<T>(path: string): T {
   return JSON.parse(fs.readFileSync(path, "utf-8"));
 }
+
+export function expand<T>(arr: T[][]): T[] {
+  return arr.reduce((a, b) => {
+    a.push(...b);
+    return a;
+  }, []);
+}
