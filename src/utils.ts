@@ -46,3 +46,25 @@ export function expand<T>(arr: T[][]): T[] {
     return a;
   }, []);
 }
+
+export function removeLeadingRegex(rgx: RegExp, str: string) {
+  const arr = str.split("");
+  while (arr.length && rgx.test(arr[0])) {
+    arr.shift();
+  }
+  return arr.join("").trim();
+}
+
+export function removeTrailingRegex(rgx: RegExp, str: string) {
+  const arr = str.split("");
+  while (arr.length && rgx.test(arr.slice(-1).pop()!)) {
+    arr.pop();
+  }
+  return arr.join("").trim();
+}
+
+export function trimRegex(rgx: RegExp, str: string): string {
+  str = removeLeadingRegex(rgx, str);
+  str = removeTrailingRegex(rgx, str);
+  return str;
+}

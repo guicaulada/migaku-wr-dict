@@ -14,7 +14,7 @@ import {
   WordReferenceTranslation,
   WordReferenceTranslationItem,
 } from "./types";
-import { expand } from "./utils";
+import { expand, trimRegex } from "./utils";
 
 export function getValidMonolingual() {
   return ["en", "es", "it"];
@@ -233,7 +233,7 @@ function mapWordReferenceLists(
   $(".rh_me sup").remove();
   result.title = $(".rh_me").text();
   result.translations = [];
-  const pos = $(".rh_empos")
+  const pos = $(".rh_pos, .rh_empos")
     .map((i, el) => {
       return $(el).text();
     })
@@ -241,7 +241,7 @@ function mapWordReferenceLists(
     .map((e) => String(e));
   $("ol").map((i, el) => {
     const $ = cheerio.load(el);
-    const list = $("ol > li").get();
+    const list = $("ol > li, ol > span > li").get();
     result.translations.push(
       ...mapTranslationLists(result.title, pos[i], list),
     );
@@ -263,8 +263,10 @@ function createListTranslationItem(
   const $ = cheerio.load(html);
   $(".rh_def .rh_lab").remove();
   $(".rh_def .rh_cat").remove();
+  $(".rh_def sup").remove();
   $(".rh_sdef .rh_lab").remove();
   $(".rh_sdef .rh_cat").remove();
+  $(".rh_sdef sup").remove();
   const ex = $(".rh_def .rh_ex")
     .map((i, el) => {
       return $(el).text();
@@ -280,24 +282,33 @@ function createListTranslationItem(
   const sublists = $("li li").get();
   $(".rh_def > .rh_ex").remove();
   $(".rh_def > ul").remove();
-  let def = $(".rh_def").text().trim().replace(/:/g, "");
+  let def = $(".rh_def").text().trim().split(":").shift()!;
+  const fromDef = $(".rh_def > b")
+    .map((i, el) => {
+      return $(el).text();
+    })
+    .get()
+    .map((e) => String(e))
+    .reduce(
+      (t: string[], e) => (!t.join(" ").includes(e) ? t.concat([e.trim()]) : t),
+      [],
+    )
+    .map((e) => trimRegex(/[.|,]/, e))
+    .join(" or ");
   if (sublists && sublists.length) {
+    def = trimRegex(/[.|,]/, def);
     return mapTranslationLists(def, fromType, sublists);
   } else if (!def) {
     $(".rh_sdef > .rh_ex").remove();
     def = $(".rh_sdef").text().trim().replace(/:/g, "");
   }
+  if (fromDef) {
+    from = fromDef;
+    from.split(/\s+/g).forEach((w) => (def = def.replace(w, " ").trim()));
+  }
+  def = trimRegex(/[.|,]/, def).replace(/\s+/g, " ");
   return [
-    {
-      from,
-      fromType,
-      toType: fromType,
-      to: def,
-      example: {
-        from: [],
-        to: ex.concat(sec_ex),
-      },
-    },
+    mapTranslationItem(from, fromType, def, fromType, [], ex.concat(sec_ex)),
   ];
 }
 
@@ -335,16 +346,7 @@ function createTableTranslationItem(
   const toType = $(".ToWrd em").text();
   $(".ToWrd em").remove();
   const to = $(".ToWrd").text();
-  return {
-    from,
-    fromType,
-    toType,
-    to,
-    example: {
-      from: [],
-      to: [],
-    },
-  };
+  return mapTranslationItem(from, fromType, to, toType);
 }
 
 function pushTableExample(
@@ -380,4 +382,24 @@ function isTableExampleItem(element: Cheerio): boolean {
   const id = element.attr("id");
   const clss = element.attr("class");
   return id === undefined && (clss === "even" || clss === "odd");
+}
+
+function mapTranslationItem(
+  from: string,
+  fromType: string,
+  to: string,
+  toType: string,
+  exampleFrom: string[] = [],
+  exampleTo: string[] = [],
+): WordReferenceTranslationItem {
+  return {
+    from,
+    fromType,
+    to,
+    toType,
+    example: {
+      from: exampleFrom,
+      to: exampleTo,
+    },
+  };
 }
