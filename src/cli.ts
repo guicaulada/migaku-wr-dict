@@ -178,7 +178,8 @@ export function printErrors(errors: AxiosError[]) {
 
 export function getOutputFile(path: string, from: string, to: string) {
   if (path.slice(-1) == "/") path = path + "migaku_wr_dict";
-  return `${path.replace(".zip", "")}_${from}${to}`;
+  if (path.slice(-4) != ".zip") path = path + `_${from}${to}`;
+  return path;
 }
 
 export async function printWordReference(
