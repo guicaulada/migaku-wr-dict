@@ -144,7 +144,7 @@ export async function getResults(
         wr(freq.word, argv.from!, argv.to!, freq.frequency).catch((err) => {
           if (err.message.includes("reCAPTCHA")) {
             chunkRecaptcha.push(freq);
-            return null as any;
+            return;
           } else {
             chunkErrors.push(err);
             return freq;
@@ -160,14 +160,14 @@ export async function getResults(
     }
   }
   pbar.stop();
-  return { results, errors };
+  return { results: results as WordReferenceResult[], errors };
 }
 
-export function printErrors(errors: AxiosError[]) {
+export function printErrors(errors: AxiosError[]): void {
   if (errors.length > 0) {
     for (const err of errors) {
       try {
-        const word = decodeURIComponent(err.config.url?.split("/").pop()!);
+        const word = decodeURIComponent(err.config.url!.split("/").pop()!);
         console.log(`Error processing word: ${word} - ${err.message}`);
       } catch {
         console.log(err);
@@ -176,7 +176,7 @@ export function printErrors(errors: AxiosError[]) {
   }
 }
 
-export function getOutputFile(path: string, from: string, to: string) {
+export function getOutputFile(path: string, from: string, to: string): string {
   if (path.slice(-1) == "/") path = path + "migaku_wr_dict";
   if (path.slice(-4) != ".zip") path = path + `_${from}${to}`;
   return path;
@@ -186,18 +186,18 @@ export async function printWordReference(
   word: string,
   from: string,
   to: string,
-) {
+): Promise<void> {
   console.log(JSON.stringify(await wr(word, from, to)));
 }
 
-export function generateFromData(argv: Arguments) {
+export function generateFromData(argv: Arguments): void {
   const output = getOutputFile(argv.output, argv.from!, argv.to!);
   const data = readJSON<WordReferenceResult[]>(argv.data!);
   const dict = generateMigakuDictionary(data, argv.header, !argv.noExamples);
   zipMigakuDictionary(output, dict);
 }
 
-export async function generateFromResults(argv: Arguments) {
+export async function generateFromResults(argv: Arguments): Promise<void> {
   const freq = await getFrequency(argv);
   const output = getOutputFile(argv.output, argv.from!, argv.to!);
   const { results, errors } = await getResults(freq, argv);
@@ -213,7 +213,7 @@ export async function generateFromResults(argv: Arguments) {
   }
 }
 
-export async function printAvailableLanguages() {
+export async function printAvailableLanguages(): Promise<void> {
   const langs = await getAvailableLanguages();
   printTable(langs);
 }

@@ -20,15 +20,15 @@ export function updateProgressBar(
   pbar: cliProgress.SingleBar,
   items: number,
   start: number,
-) {
-  let elapsed = (Date.now() - start) / 1000;
-  let speed = items / elapsed;
+): void {
+  const elapsed = (Date.now() - start) / 1000;
+  const speed = items / elapsed;
   pbar.update(items, {
     speed: `${speed.toFixed(2)}it/s`,
   });
 }
 
-export function writeJSON(path: string, data: any) {
+export function writeJSON(path: string, data: unknown): void {
   if (path.slice(-1) == "/") path = path.slice(0, -1);
   if (path.slice(-5) != ".json") {
     path = path + ".json";
@@ -47,7 +47,7 @@ export function expand<T>(arr: T[][]): T[] {
   }, []);
 }
 
-export function removeLeadingRegex(rgx: RegExp, str: string) {
+export function removeLeadingRegex(rgx: RegExp, str: string): string {
   const arr = str.split("");
   while (arr.length && rgx.test(arr[0])) {
     arr.shift();
@@ -55,7 +55,7 @@ export function removeLeadingRegex(rgx: RegExp, str: string) {
   return arr.join("").trim();
 }
 
-export function removeTrailingRegex(rgx: RegExp, str: string) {
+export function removeTrailingRegex(rgx: RegExp, str: string): string {
   const arr = str.split("");
   while (arr.length && rgx.test(arr.slice(-1).pop()!)) {
     arr.pop();

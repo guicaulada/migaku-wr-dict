@@ -16,11 +16,14 @@ import {
 } from "./types";
 import { expand, trimRegex } from "./utils";
 
-export function getValidMonolingual() {
+export function getValidMonolingual(): string[] {
   return ["en", "es", "it"];
 }
 
-export function zipMigakuDictionary(path: string, dict: MigakuDictionary) {
+export function zipMigakuDictionary(
+  path: string,
+  dict: MigakuDictionary,
+): void {
   const file = new AdmZip();
   const folderName = path.split("/").pop()?.split(".").shift();
   file.addFile(
@@ -48,7 +51,7 @@ export function generateMigakuDefinition(
   definition: string,
   examples: WordReferenceExample,
   exOnDef?: boolean,
-) {
+): string {
   if (!definition) return "";
   if (!exOnDef || !examples) return definition;
   return `${definition}\n\n${examples.from.concat(examples.to).join("\n")}`;
@@ -247,7 +250,7 @@ function mapWordReferenceLists(
   html: Element | string,
 ): WordReferenceTranslation {
   const $ = cheerio.load(html);
-  let result = {} as WordReferenceTranslation;
+  const result = {} as WordReferenceTranslation;
   $(".rh_me sup").remove();
   result.title = $(".rh_me").text();
   result.translations = [];
