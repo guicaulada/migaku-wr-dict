@@ -77,7 +77,7 @@ export function generateMigakuDictionary(
     if (data.translations) {
       data.translations.forEach((tables) => {
         tables.translations.forEach((tr) => {
-          dictionary.push({
+          const dictEl = {
             term: tr.from,
             altterm: "",
             pronunciation: data.pronWR || "",
@@ -85,12 +85,30 @@ export function generateMigakuDictionary(
             pos: tr.fromType || "",
             examples: tr.example.from.concat(tr.example.to).join("\n"),
             audio: data.audio ? data.audio[0] : "",
-          });
+          };
+          const existingEl = dictionary.find(
+            (e) => e.definition == dictEl.definition && e.term == dictEl.term,
+          );
+          if (existingEl) {
+            updateDictionaryDuplicate(existingEl, dictEl);
+          } else {
+            dictionary.push(dictEl);
+          }
         });
       });
     }
   }
   return { header, frequency, conjugations, dictionary };
+}
+
+function updateDictionaryDuplicate(
+  data: MigakuDictionaryItem,
+  newData: MigakuDictionaryItem,
+) {
+  data.altterm = data.altterm || newData.altterm;
+  data.pronunciation = data.pronunciation || newData.pronunciation;
+  data.pos = data.pos || newData.pos;
+  data.audio = data.audio || newData.audio;
 }
 
 function mapFrequencyList(data: string): FrequencyItem[] {
