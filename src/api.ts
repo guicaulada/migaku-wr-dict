@@ -12,7 +12,7 @@ import {
   WordReferenceExample,
   WordReferenceResult,
   WordReferenceTranslation,
-  WordReferenceTranslationItem,
+  WordReferenceTranslationItem
 } from "./types";
 import { expand, trimRegex } from "./utils";
 
@@ -162,6 +162,9 @@ export async function getAvailableLanguages(): Promise<Language[]> {
     .get()
     .map((e) => String(e));
   const langs = langCodes.reduce((langs: Language[], code, i) => {
+    if (code === "el") {
+      code = "gr";
+    }
     langs.push({ code, name: langNames[i] });
     return langs;
   }, []);
